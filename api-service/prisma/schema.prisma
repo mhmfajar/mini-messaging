@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?  @db.VarChar(100)
+  phone     String   @unique @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  @@map("users")
+}
+
+enum MessageStatus {
+  queued
+  processing
+  sent
+  failed
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  senderId       String        @map("sender_id")
+  receiverId     String        @map("receiver_id")
+  message        String
+  status         MessageStatus @default(queued)
+  idempotencyKey String?       @unique @map("idempotency_key") @db.VarChar(100)
+  retryCount     Int           @default(0) @map("retry_count")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  readAt         DateTime?     @map("read_at")
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@index([receiverId])
+  @@index([senderId])
+  @@index([status])
+  @@map("messages")
+}

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: API Service - Lint & Test
+        run: |
+          cd api-service
+          bun install
+          bun x prisma generate
+          bun run lint
+          bun run test
+
+      - name: Worker Service - Test
+        run: |
+          cd worker-service
+          bun install
+          bun x prisma generate
+          bun test
+
+      - name: Frontend - Lint & Type Check
+        run: |
+          cd frontend
+          bun install
+          bun run lint
+
+  docker-build:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build API Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-service
+          push: false
+          
+      - name: Build Worker Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./worker-service
+          push: false
+          
+      - name: Build Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
